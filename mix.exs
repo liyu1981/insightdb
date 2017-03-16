@@ -37,6 +37,7 @@ defmodule Insightdb.Mixfile do
      {:db_connection, "~> 1.1"},
      {:poison, "~> 3.0"},
      {:httpoison, "~> 0.10.0"},
-     {:excoveralls, "~> 0.6", only: :test}]
+     {:excoveralls, "~> 0.6", only: :test},
+     {:mock, "~> 0.2.0", only: :test}]
   end
 end

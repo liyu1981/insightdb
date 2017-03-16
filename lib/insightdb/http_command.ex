@@ -6,12 +6,13 @@ defmodule Insightdb.HttpCommand do
   end
 
   def run(verb, url, body \\ "", headers \\ [], options \\ []) do
-    case {verb, Keyword.fetch(options, :paging_strategy)} do
+    (case {verb, Keyword.fetch(options, :paging_strategy)} do
       {:get, {:ok, paging_strategy}} ->
         run_with_paging(verb, url, body, headers, options, paging_strategy, [])
       _ ->
         run_single(verb, url, body, headers, options)
-    end
+    end) |>
+    try_merge_result(Keyword.fetch(options, :merge_strategy))
   end
 
   defp run_with_paging(verb, url, body, headers, options, paging_strategy, accumulator) do
@@ -70,7 +71,7 @@ defmodule Insightdb.HttpCommand do
     end
   end
 
-  defp verify_http_response(response, verb, url, body, headers, options) do
+  defp verify_http_response(response, verb, _url, body, headers, options) do
     case response.status_code do
       200 ->
         {:ok, response}
@@ -90,6 +91,35 @@ defmodule Insightdb.HttpCommand do
       _ ->
         {:error, {:parse_body_fail, response}}
     end
+  end
+
+  defp try_merge_result({:ok, response}, {:ok, merge_strategy}) do
+    if is_list(response) do
+      {:ok, %{"result" => merge_result(response, merge_strategy, []), "original_response" => response}}
+    else
+      {:ok, %{"result" => response.body, "original_response" => response}}
+    end
+  end
+
+  defp try_merge_result({:ok, response}, :error) do
+    {:ok, %{"result" => response.body, "original_response" => response}}
+  end
+
+  defp try_merge_result({:error, response}, _) do
+    {:error, response}
+  end
+
+  defp merge_result([hd | tl], merge_strategy, accumulater) do
+    case merge_strategy.(hd, accumulater) do
+      {:ok, accumulater} ->
+        merge_result(tl, merge_strategy, accumulater)
+      {:error, error} ->
+        exit(error)
+    end
+  end
+
+  defp merge_result([], _, accumulater) do
+    accumulater
   end
 
 end
