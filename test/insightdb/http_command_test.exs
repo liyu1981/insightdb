@@ -26,6 +26,7 @@ defmodule Insightdb.HttpCommandTest do
 
   setup do
     use Insightdb.HttpCommand
+    Logger.disable(self())
   end
 
   test "html 200" do
@@ -92,7 +93,7 @@ defmodule Insightdb.HttpCommandTest do
   end
 
   test "fb paing empty" do
-    with_mock HTTPoison, [ get: fn(url, _, _) -> {:ok, @mock_response_fb_paging_3} end ] do
+    with_mock HTTPoison, [ get: fn(_url, _, _) -> {:ok, @mock_response_fb_paging_3} end ] do
       url = "https://graph.facebook.com/v2.8/act_1638830686366258/campaigns?access_token=EAAW"
       assert {:ok, %{"result" => result, "original_response" => original_response}} =
         HttpCommand.run(:get, url, "", [], [paging_strategy: &PagingStrategy.fb/1, merge_strategy: &MergeStrategy.fb/2])
