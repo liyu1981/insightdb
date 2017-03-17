@@ -1,5 +1,6 @@
 defmodule Insightdb.CommandRunnerTest do
   use ExUnit.Case
+  import ExUnit.CaptureLog
   import Mock
 
   alias Insightdb.CommandRunner, as: CommandRunner
@@ -104,6 +105,70 @@ defmodule Insightdb.CommandRunnerTest do
       assert %{"cmd_schedule_error" => [%{"cmd_id" => "123", "error" => _error}]} = mock_db
       #IO.puts "cmd_id is #{cmd_id}, error is #{error}"
     end
+  end
+
+  test "http_command mongo exception in find" do
+    gen_mongo_mocks_and_replace = fn(mock_db_key) ->
+      {m, opts, fns} = gen_mongo_mocks(mock_db_key)
+      new_fns = Keyword.put(fns, :find, fn(_, _, _) -> nil end)
+      {m, opts, new_fns}
+    end
+
+    cmd_id = "123"
+    mock_db_key = setup_mock_db(cmd_id, "http_command", Keyword.put(@cmd_config_1, :verb, :get1))
+    with_mocks([gen_mongo_mocks_and_replace.(mock_db_key), gen_httpcommand_mocks()]) do
+      assert CommandRunner.run(cmd_id)
+      mock_db = Stash.get(:unitest, mock_db_key)
+      assert %{"cmd_schedule" => [%{"status" => "failed"}]} = mock_db
+      assert %{"cmd_schedule_result" => []} = mock_db
+      assert %{"cmd_schedule_error" => [%{"cmd_id" => "123", "error" => _error}]} = mock_db
+      #IO.puts "cmd_id is #{cmd_id}, error is #{error}"
+    end
+  end
+
+  test "http_command mongo exception in insert_one!" do
+    gen_mongo_mocks_and_replace = fn(mock_db_key) ->
+      {m, opts, fns} = gen_mongo_mocks(mock_db_key)
+      new_fns = Keyword.put(fns, :insert_one!, fn(_, coll, doc) ->
+        case coll do
+          "cmd_schedule_error" -> insert_doc(mock_db_key, "cmd_schedule_error", doc)
+          "cmd_schedule_result" -> raise "oops!"
+        end
+      end)
+      {m, opts, new_fns}
+    end
+
+    cmd_id = "123"
+    mock_db_key = setup_mock_db(cmd_id, "http_command", Keyword.put(@cmd_config_1, :verb, :get1))
+    with_mocks([gen_mongo_mocks_and_replace.(mock_db_key), gen_httpcommand_mocks()]) do
+      assert CommandRunner.run(cmd_id)
+      mock_db = Stash.get(:unitest, mock_db_key)
+      assert %{"cmd_schedule" => [%{"status" => "failed"}]} = mock_db
+      assert %{"cmd_schedule_result" => []} = mock_db
+      assert %{"cmd_schedule_error" => [%{"cmd_id" => "123", "error" => _error}]} = mock_db
+      #IO.puts "cmd_id is #{cmd_id}, error is #{error}"
+    end
+  end
+
+  test "http_command mongo exception in saving error" do
+    gen_mongo_mocks_and_replace = fn(mock_db_key) ->
+      {m, opts, fns} = gen_mongo_mocks(mock_db_key)
+      new_fns = Keyword.put(fns, :find_one_and_update, fn(_, _, _, _) -> raise "oops!" end)
+      {m, opts, new_fns}
+    end
+
+    cmd_id = "123"
+    mock_db_key = setup_mock_db(cmd_id, "http_command", Keyword.put(@cmd_config_1, :verb, :get1))
+    fun = fn ->
+      with_mocks([gen_mongo_mocks_and_replace.(mock_db_key), gen_httpcommand_mocks()]) do
+        assert CommandRunner.run(cmd_id)
+        mock_db = Stash.get(:unitest, mock_db_key)
+        assert %{"cmd_schedule" => [%{"status" => "scheduled"}]} = mock_db
+        #assert called Logger.error
+        #IO.puts "cmd_id is #{cmd_id}, error is #{error}"
+      end
+    end
+    capture_log(fun) =~ "save error failed for cmd_id"
   end
 
 end

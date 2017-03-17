@@ -1,4 +1,5 @@
 defmodule Insightdb.CommandRunner do
+  require Logger
 
   @moduledoc """
   Command's life cycle:
@@ -87,7 +88,12 @@ defmodule Insightdb.CommandRunner do
 
   defp update_cmd_status_and_save_error(cmd_id, errormsg) do
     stacktrace = System.stacktrace() |> Exception.format_stacktrace()
-    update_cmd_status(cmd_id, @status_failed, [error: errormsg, stacktrace: stacktrace])
+    try do
+      update_cmd_status(cmd_id, @status_failed, [error: errormsg, stacktrace: stacktrace])
+    rescue
+      _ ->
+        Logger.error "save error failed for cmd_id #{cmd_id}, error: #{errormsg}, stacktrace: \n#{stacktrace}"
+    end
   end
 
 end
