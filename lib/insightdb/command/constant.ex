@@ -10,6 +10,7 @@ defmodule Insightdb.Command.Constant do
   constant field__id, "_id"
   constant field_status, "status"
 
+  constant status_planned, "planned"
   constant status_scheduled, "scheduled"
   constant status_running, "running"
   constant status_done, "done"

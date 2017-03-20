@@ -13,9 +13,22 @@ defmodule Insightdb.Command do
        command's data in Mongo with status: done
   """
 
-  def reg(:http_command, cmd_config) do
-    #HttpCommand.reg(cmd_config)
-    :ok
+  def reg(cmd_type, cmd_config) do
+    Mongo.insert_one(Constant.conn_name, Constant.coll_cmd_schedule, %{
+      "cmd_type" => cmd_type,
+      "status" => Constant.status_planned,
+      "cmd_config" => cmd_config
+    })
+  end
+
+  def status(cmd_id) do
+    try do
+      doc = find_cmd(cmd_id)
+      {:ok, doc[Constant.field_status]}
+    rescue
+      e ->
+        {:error, e}
+    end
   end
 
   def run(cmd_id) do
@@ -35,7 +48,7 @@ defmodule Insightdb.Command do
   end
 
   defp find_cmd(cmd_id) do
-    case Mongo.find(Constant.conn_name, Constant.coll_cmd_schedule, %{Constant.field__id => cmd_id}) do
+    case Mongo.find_one(Constant.conn_name, Constant.coll_cmd_schedule, %{Constant.field__id => cmd_id}) do
       nil ->
         raise "can not find cmd with id #{inspect cmd_id}"
       doc ->
