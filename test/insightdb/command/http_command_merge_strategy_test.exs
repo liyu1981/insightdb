@@ -1,7 +1,7 @@
-defmodule Insightdb.HttpCommand.MergeStrategyTest do
+defmodule Insightdb.Command.HttpCommand.MergeStrategyTest do
   use ExUnit.Case
 
-  alias Insightdb.HttpCommand.MergeStrategy, as: MergeStrategy
+  alias Insightdb.Command.HttpCommand.MergeStrategy, as: MergeStrategy
 
   test "normal merge" do
     resp = %HTTPoison.Response{

@@ -1,7 +1,7 @@
-defmodule Insightdb.HttpCommand.PagingStrategyTest do
+defmodule Insightdb.Command.HttpCommand.PagingStrategyTest do
   use ExUnit.Case
 
-  alias Insightdb.HttpCommand.PagingStrategy, as: PagingStrategy
+  alias Insightdb.Command.HttpCommand.PagingStrategy, as: PagingStrategy
 
   test "normal" do
     resp = %HTTPoison.Response{

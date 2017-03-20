@@ -1,9 +1,9 @@
-defmodule Insightdb.CommandRunnerTest do
+defmodule Insightdb.CommandTest do
   use ExUnit.Case
   import ExUnit.CaptureLog
   import Mock
 
-  alias Insightdb.CommandRunner, as: CommandRunner
+  alias Insightdb.Command, as: Command
 
   @stash_mock_db_key "mockdb"
   @sample_result %{"result" => [1,2,3], "original_response": "hello, world"}
@@ -62,7 +62,7 @@ defmodule Insightdb.CommandRunnerTest do
   end
 
   defp gen_httpcommand_mocks() do
-    {Insightdb.HttpCommand, [], [
+    {Insightdb.Command.HttpCommand, [], [
       run: fn(_, _, _, _, _) -> {:ok, @sample_result} end,
     ]}
   end
@@ -75,7 +75,7 @@ defmodule Insightdb.CommandRunnerTest do
     cmd_id = "123"
     mock_db_key = setup_mock_db(cmd_id, "http_command", @cmd_config_1)
     with_mocks([gen_mongo_mocks(mock_db_key), gen_httpcommand_mocks()]) do
-      assert CommandRunner.run(cmd_id)
+      assert Command.run(cmd_id)
       mock_db = Stash.get(:unitest, mock_db_key)
       assert %{"cmd_schedule" => [%{"status" => "done"}]} = mock_db
     end
@@ -85,7 +85,7 @@ defmodule Insightdb.CommandRunnerTest do
     cmd_id = "123"
     mock_db_key = setup_mock_db(cmd_id, "http_command1", @cmd_config_1)
     with_mocks([gen_mongo_mocks(mock_db_key), gen_httpcommand_mocks()]) do
-      assert CommandRunner.run(cmd_id)
+      assert Command.run(cmd_id)
       mock_db = Stash.get(:unitest, mock_db_key)
       assert %{"cmd_schedule" => [%{"status" => "failed"}]} = mock_db
       assert %{"cmd_schedule_result" => []} = mock_db
@@ -98,7 +98,7 @@ defmodule Insightdb.CommandRunnerTest do
     cmd_id = "123"
     mock_db_key = setup_mock_db(cmd_id, "http_command", Keyword.put(@cmd_config_1, :verb, :get1))
     with_mocks([gen_mongo_mocks(mock_db_key)]) do
-      assert CommandRunner.run(cmd_id)
+      assert Command.run(cmd_id)
       mock_db = Stash.get(:unitest, mock_db_key)
       assert %{"cmd_schedule" => [%{"status" => "failed"}]} = mock_db
       assert %{"cmd_schedule_result" => []} = mock_db
@@ -117,7 +117,7 @@ defmodule Insightdb.CommandRunnerTest do
     cmd_id = "123"
     mock_db_key = setup_mock_db(cmd_id, "http_command", Keyword.put(@cmd_config_1, :verb, :get1))
     with_mocks([gen_mongo_mocks_and_replace.(mock_db_key), gen_httpcommand_mocks()]) do
-      assert CommandRunner.run(cmd_id)
+      assert Command.run(cmd_id)
       mock_db = Stash.get(:unitest, mock_db_key)
       assert %{"cmd_schedule" => [%{"status" => "failed"}]} = mock_db
       assert %{"cmd_schedule_result" => []} = mock_db
@@ -141,7 +141,7 @@ defmodule Insightdb.CommandRunnerTest do
     cmd_id = "123"
     mock_db_key = setup_mock_db(cmd_id, "http_command", Keyword.put(@cmd_config_1, :verb, :get1))
     with_mocks([gen_mongo_mocks_and_replace.(mock_db_key), gen_httpcommand_mocks()]) do
-      assert CommandRunner.run(cmd_id)
+      assert Command.run(cmd_id)
       mock_db = Stash.get(:unitest, mock_db_key)
       assert %{"cmd_schedule" => [%{"status" => "failed"}]} = mock_db
       assert %{"cmd_schedule_result" => []} = mock_db
@@ -161,7 +161,7 @@ defmodule Insightdb.CommandRunnerTest do
     mock_db_key = setup_mock_db(cmd_id, "http_command", Keyword.put(@cmd_config_1, :verb, :get1))
     fun = fn ->
       with_mocks([gen_mongo_mocks_and_replace.(mock_db_key), gen_httpcommand_mocks()]) do
-        assert CommandRunner.run(cmd_id)
+        assert Command.run(cmd_id)
         mock_db = Stash.get(:unitest, mock_db_key)
         assert %{"cmd_schedule" => [%{"status" => "scheduled"}]} = mock_db
         #assert called Logger.error

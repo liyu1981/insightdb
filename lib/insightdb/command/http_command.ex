@@ -1,4 +1,4 @@
-defmodule Insightdb.HttpCommand do
+defmodule Insightdb.Command.HttpCommand do
   require Logger
 
   defmacro __using__(_) do

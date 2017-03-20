@@ -1,10 +1,10 @@
-defmodule Insightdb.HttpCommandTest do
+defmodule Insightdb.Command.HttpCommandTest do
   use ExUnit.Case
   import Mock
 
-  alias Insightdb.HttpCommand, as: HttpCommand
-  alias Insightdb.HttpCommand.PagingStrategy, as: PagingStrategy
-  alias Insightdb.HttpCommand.MergeStrategy, as: MergeStrategy
+  alias Insightdb.Command.HttpCommand, as: HttpCommand
+  alias Insightdb.Command.HttpCommand.PagingStrategy, as: PagingStrategy
+  alias Insightdb.Command.HttpCommand.MergeStrategy, as: MergeStrategy
 
   @mock_response_200 %HTTPoison.Response{body: "this is test", status_code: 200, headers: []}
   @mock_response_302 %HTTPoison.Response{body: "", status_code: 302, headers: [{"Location", "http://301.to.somewhere"}]}
@@ -25,7 +25,7 @@ defmodule Insightdb.HttpCommandTest do
   }
 
   setup do
-    use Insightdb.HttpCommand
+    use HttpCommand
     Logger.disable(self())
   end
 

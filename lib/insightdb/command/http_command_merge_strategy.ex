@@ -1,4 +1,4 @@
-defmodule Insightdb.HttpCommand.MergeStrategy do
+defmodule Insightdb.Command.HttpCommand.MergeStrategy do
 
   def fb(%{body: %{"data" => data}}, accumulator) do
     {:ok, accumulator ++ data}
