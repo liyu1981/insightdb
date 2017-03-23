@@ -14,11 +14,16 @@ defmodule Insightdb.Command do
   """
 
   def reg(cmd_type, cmd_config) do
-    Mongo.insert_one(Constant.conn_name, Constant.coll_cmd_schedule, %{
+    case Mongo.insert_one(Constant.conn_name, Constant.coll_cmd_schedule, %{
       "cmd_type" => cmd_type,
-      "status" => Constant.status_planned,
+      "status" => Constant.status_scheduled,
       "cmd_config" => cmd_config
-    })
+    }) do
+      {:ok, %{inserted_id: cmd_id}} ->
+        {:ok, cmd_id}
+      {:error, error} ->
+        {:ok, error}
+    end
   end
 
   def status(cmd_id) do
@@ -78,7 +83,7 @@ defmodule Insightdb.Command do
     )
   end
 
-  defp run_command("http_command", [verb: verb, url: url, body: body, headers: headers, options: options]) do
+  defp run_command(:http_command, [verb: verb, url: url, body: body, headers: headers, options: options]) do
     case HttpCommand.run(verb, url, body, headers, options) do
       {:ok, result} ->
         {:ok, result}
