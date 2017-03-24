@@ -1,19 +1,27 @@
 defmodule Insightdb.Command.HttpCommandMocks do
   use GenServer
+  use Bangify
 
   @server_name :http_command_mock_server
 
-  @sample_result %{"result" => [1,2,3], "original_response": "hello, world"}
+  @sample_result %{"result" => [1,2,3], "original_response" => "hello, world"}
 
-  def set_lazy(lazyness) when is_integer(lazyness) do
-    GenServer.call(@server_name, {:set_lazy, lazyness})
+  def init_http_mock do
+    GenServer.call(@server_name, {:init})
   end
 
-  def gen() do
+  def set_lazy(mock_key, lazyness) when is_integer(lazyness) do
+    GenServer.call(@server_name, {:set_lazy, mock_key, lazyness})
+  end
+
+  def gen(mock_key \\ "0") do
     {Insightdb.Command.HttpCommand, [], [
       run: fn(_, _, _, _, _) ->
-        GenServer.call(@server_name, {:request})
+        GenServer.call(@server_name, {:request, mock_key})
       end,
+      run!: fn(_, _, _, _, _) ->
+        bangify(GenServer.call(@server_name, {:request, mock_key}))
+      end
     ]}
   end
 
@@ -26,15 +34,24 @@ defmodule Insightdb.Command.HttpCommandMocks do
   end
 
   def init(:ok) do
-    {:ok, %{lazy: 0}}
+    {:ok, %{lazy: %{"0" => 0}}}
   end
 
-  def handle_call({:set_lazy, lazyness}, _from, state) do
-    {:reply, :ok, Map.put(state, :lazy, lazyness)}
+  def handle_call({:init}, _from, state) do
+    mock_key = SecureRandom.base64(8)
+    new_lazy_map = Map.get(state, :lazy, %{}) |> Map.put_new(mock_key, 0)
+    {:reply, mock_key, Map.put(state, :lazy, new_lazy_map)}
   end
 
-  def handle_call({:request}, _from, state) do
-    with %{lazy: lazy} <- state,
+
+  def handle_call({:set_lazy, mock_key, lazyness}, _from, state) do
+    new_lazy_map = Map.get(state, :lazy, %{}) |> Map.put(mock_key, lazyness)
+    {:reply, :ok, Map.put(state, :lazy, new_lazy_map)}
+  end
+
+  def handle_call({:request, mock_key}, _from, state) do
+    with %{lazy: lazy_map} <- state,
+         lazy <- Map.get(lazy_map, mock_key, 0),
          _ <- Process.sleep(lazy),
          do: {:reply, {:ok, @sample_result}, state}
   end

@@ -1,8 +1,13 @@
 defmodule Insightdb.Command.HttpCommand do
   require Logger
+  use Bangify
 
   defmacro __using__(_) do
     HTTPoison.start
+  end
+
+  def run!(verb, url, body \\ "", headers \\ [], options \\ []) do
+    bangify(run(verb, url, body, headers, options))
   end
 
   def run(verb, url, body \\ "", headers \\ [], options \\ []) do
@@ -24,51 +29,36 @@ defmodule Insightdb.Command.HttpCommand do
           _ ->
             {:ok, [response | accumulator]}
         end
-      {ok?, response} ->
-        {ok?, response}
+      {:error, error} ->
+        {:error, error}
     end
   end
 
   defp run_single(verb, url, body, headers, options) do
     Logger.info "http #{verb} request to #{url}, with headers: #{inspect headers}, body:#{inspect body}"
-    case send_http_request(verb, url, body, headers, options) do
-      {:ok, response} ->
-        header_map = Enum.into(response.headers, %{})
-        response = %{response | headers: header_map}
-        case response.headers["Content-Type"] do
-          "application/json" <> _ ->
-            try_parse_json_body(response)
-          "text/javascript" <> _ ->
-            try_parse_json_body(response)
-          _->
-            {:ok, response}
-        end
-      {:error, error} ->
-        exit(error)
-    end
+    with {:ok, response} <- send_http_request(verb, url, body, headers, options),
+         header_map <- Enum.into(response.headers, %{}),
+         response <- %{response | headers: header_map},
+         do: try_parse_json_body(response)
   end
 
   defp send_http_request(verb, url, body, headers, options) do
-    {ok?, response} = case verb do
-      :get ->
-        HTTPoison.get(url, headers, options)
-      :post ->
-        HTTPoison.post(url, body, headers, options)
-      :put ->
-        HTTPoison.put(url, body, headers, options)
-      :delete ->
-        HTTPoison.delete(url, headers, options)
-      _ ->
-        {:error, "Do not know how to handle http verb: #{verb}"}
+    do_verb = fn ->
+      case verb do
+        :get ->
+          HTTPoison.get(url, headers, options)
+        :post ->
+          HTTPoison.post(url, body, headers, options)
+        :put ->
+          HTTPoison.put(url, body, headers, options)
+        :delete ->
+          HTTPoison.delete(url, headers, options)
+        _ ->
+          {:error, "Do not know how to handle http verb: #{verb}"}
+      end
     end
-    case ok? do
-      :ok ->
-        verify_http_response(response, verb, url, body, headers, options)
-      :error ->
-        {:error, {:verify_error, response}}
-      _ ->
-        {:error, "Unknown code #{ok?} and response #{inspect response}"}
-    end
+    with {:ok, response} <- do_verb.(),
+         do: verify_http_response(response, verb, url, body, headers, options)
   end
 
   defp verify_http_response(response, verb, _url, body, headers, options) do
@@ -84,9 +74,16 @@ defmodule Insightdb.Command.HttpCommand do
   end
 
   defp try_parse_json_body(response) do
-    {ok?, bodyjson} = Poison.Parser.parse(response.body)
-    case ok? do
-      :ok ->
+    case response.headers["Content-Type"] do
+      "application/json" <> _ -> parse_json_body(response)
+      "text/javascript" <> _ -> parse_json_body(response)
+      _-> {:ok, response}
+    end
+  end
+
+  defp parse_json_body(response) do
+    case Poison.Parser.parse(response.body) do
+      {:ok, bodyjson} ->
         {:ok, %{response | body: bodyjson}}
       _ ->
         {:error, {:parse_body_fail, response}}
