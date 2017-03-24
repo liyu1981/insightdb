@@ -16,9 +16,10 @@ defmodule Insightdb.CommandServer do
 
   # API
 
-  def reg(cmd_type, cmd_config) do
-    with {:ok, %{inserted_id: cmd_id}} <- Mongo.insert_one(
-           Constant.conn_name, Constant.coll_cmd_schedule, %{
+  def reg(server, cmd_type, cmd_config) do
+    with  conn_name <- format_conn_name(server),
+          {:ok, %{inserted_id: cmd_id}} <- Mongo.insert_one(
+           conn_name, Constant.coll_cmd_schedule, %{
              Constant.field_cmd_type => cmd_type,
              Constant.field_status => Constant.status_scheduled,
              Constant.field_cmd_config => cmd_config
@@ -26,8 +27,9 @@ defmodule Insightdb.CommandServer do
          do: {:ok, cmd_id}
   end
 
-  def cmd_status(cmd_id) do
-    with doc <- Command.find_cmd(cmd_id),
+  def cmd_status(server, cmd_id) do
+    with conn_name <- format_conn_name(server),
+         doc <- Command.find_cmd(conn_name, cmd_id),
          false <- is_nil(doc),
          true <- Map.has_key?(doc, Constant.field_status),
          do: {:ok, doc[Constant.field_status]}
@@ -39,28 +41,45 @@ defmodule Insightdb.CommandServer do
 
   # GenServer Callbacks
 
-  def start_link do
-    GenServer.start_link(__MODULE__, :ok, [])
+  def start_link([name: server_name]) do
+    with {:ok, pid} <- GenServer.start_link(__MODULE__, %{name: server_name}, []),
+         true <- Process.register(pid, server_name),
+         do: {:ok, pid}
+  end
+
+  def init(state) do
+    with server_name = Map.get(state, :name),
+         conn_name = format_conn_name(server_name),
+         {:ok, _mongo_pid} <- Mongo.start_link([name: conn_name, database: "insightdb"]),
+         new_state <- Map.put(state, :conn_name, conn_name),
+         do: {:ok, new_state}
   end
 
   def handle_cast({:run, cmd_id}, state) do
+    conn_name = Map.get(state, :conn_name)
     try do
       %{Constant.field_cmd_type => cmd_type,
         Constant.field_status => Constant.status_scheduled,
-        Constant.field_cmd_config => cmd_config} = Command.find_cmd(cmd_id)
-      Command.update_cmd_status(cmd_id, Constant.status_running)
+        Constant.field_cmd_config => cmd_config} = Command.find_cmd(conn_name, cmd_id)
+      Command.update_cmd_status(conn_name, cmd_id, Constant.status_running)
       result = Command.run_command(cmd_type, cmd_config)
-      Command.update_cmd_status(cmd_id, Constant.status_finished)
-      Command.save_cmd_result(cmd_id, result)
-      Command.update_cmd_status(cmd_id, Constant.status_done)
+      Command.update_cmd_status(conn_name, cmd_id, Constant.status_finished)
+      Command.save_cmd_result(conn_name, cmd_id, result)
+      Command.update_cmd_status(conn_name, cmd_id, Constant.status_done)
     rescue
       e ->
-        Command.update_cmd_status_and_save_error(cmd_id, Exception.message(e))
+        Command.update_cmd_status_and_save_error(conn_name, cmd_id, Exception.message(e))
     catch
       :exit, reason ->
-        Command.update_cmd_status_and_save_error(cmd_id, Exception.format_exit(reason))
+        Command.update_cmd_status_and_save_error(conn_name, cmd_id, Exception.format_exit(reason))
     end
     {:noreply, state}
+  end
+
+  # Private
+
+  defp format_conn_name(server_name) do
+    to_string(server_name) <> "_mongo_conn" |> String.to_atom
   end
 
 end

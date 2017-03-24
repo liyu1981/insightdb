@@ -4,7 +4,6 @@ defmodule Insightdb.Command.MongoMocks do
 
   @stash_mock_db_key "mockdb"
   @stash_domain :mongo_mock_server
-  @server_name :mongo_mock_server
 
   @init_mock_db %{
     "cmd_schedule" => [],
@@ -12,58 +11,64 @@ defmodule Insightdb.Command.MongoMocks do
     "cmd_schedule_result" => [],
   }
 
-  def init_mock_db do
-    GenServer.call(@server_name, {:init_mock_db})
+  def init_mock_db(server) do
+    GenServer.call(server, {:init_mock_db})
   end
 
-  def setup_mock_db(cmd_id, cmd_type, cmd_config) do
-    mock_db_key = init_mock_db()
-    GenServer.call(@server_name, {:insert_doc, mock_db_key, "cmd_schedule",
+  def setup_mock_db(server, cmd_id, cmd_type, cmd_config) do
+    mock_db_key = init_mock_db(server)
+    GenServer.call(server, {:insert_doc, mock_db_key, "cmd_schedule",
       %{"_id" => cmd_id, "cmd_type" => cmd_type, "status" => "scheduled", "cmd_config" => cmd_config}})
     mock_db_key
   end
 
-  def find_doc(mock_db_key, coll, findfn) do
-    GenServer.call(@server_name, {:find_doc, mock_db_key, coll, findfn})
+  def find_doc(server, mock_db_key, coll, findfn) do
+    GenServer.call(server, {:find_doc, mock_db_key, coll, findfn})
   end
 
-  def update_doc(mock_db_key, coll, doc) do
-    GenServer.call(@server_name, {:update_doc, mock_db_key, coll, doc})
+  def update_doc(server, mock_db_key, coll, doc) do
+    GenServer.call(server, {:update_doc, mock_db_key, coll, doc})
   end
 
-  def insert_doc(mock_db_key, coll, doc) do
-    GenServer.call(@server_name, {:insert_doc, mock_db_key, coll, doc})
+  def insert_doc(server, mock_db_key, coll, doc) do
+    GenServer.call(server, {:insert_doc, mock_db_key, coll, doc})
   end
 
-  def gen(mock_db_key) do
+  def gen(server, mock_db_key) do
     {Mongo, [], [
       find_one: fn(_, _, %{"_id" => cmd_id}) ->
-        find_doc(mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == cmd_id end)
+        find_doc(server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == cmd_id end)
       end,
       find_one_and_update: fn(_, _, %{"_id" => cmd_id}, %{"set" => %{"status" => status}}) ->
-        doc = find_doc(mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == cmd_id end)
+        doc = find_doc(server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == cmd_id end)
         new_doc = Map.put(doc, "status", status)
-        with {:ok, _} <- update_doc(mock_db_key, "cmd_schedule", new_doc),
+        with {:ok, _} <- update_doc(server, mock_db_key, "cmd_schedule", new_doc),
              do: {:ok, new_doc}
       end,
       insert_one: fn(_, coll, doc) ->
-        insert_doc(mock_db_key, coll, doc)
+        insert_doc(server, mock_db_key, coll, doc)
       end,
       insert_one!: fn(_, coll, doc) ->
-        insert_doc(mock_db_key, coll, doc)
+        insert_doc(server, mock_db_key, coll, doc)
       end,
     ]}
   end
 
-  def get_db(mock_db_key) do
-    GenServer.call(@server_name, {:get_db, mock_db_key})
+  def get_db(server, mock_db_key) do
+    GenServer.call(server, {:get_db, mock_db_key})
+  end
+
+  def gen_start_link() do
+    {Mongo, [], [
+      start_link: fn(params) -> start_link(params) end,
+    ]}
   end
 
   # GenServer
 
-  def start_link do
+  def start_link([name: conn_name, database: _database]) do
     with {:ok, pid} <- GenServer.start_link(__MODULE__, :ok, []),
-         true <- Process.register(pid, @server_name),
+         true <- Process.register(pid, conn_name),
          do: {:ok, pid}
   end
 

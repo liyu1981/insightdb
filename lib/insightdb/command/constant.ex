@@ -1,8 +1,6 @@
 defmodule Insightdb.Command.Constant do
   use Constants
 
-  constant conn_name, :insightdb_mongo_conn
-
   constant coll_cmd_schedule, "cmd_schedule"
   constant coll_cmd_schedule_error, "cmd_schedule_error"
   constant coll_cmd_schedule_result, "cmd_schedule_result"
