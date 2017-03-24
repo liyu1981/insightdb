@@ -38,8 +38,9 @@ defmodule Insightdb.Mixfile do
      {:poison, "~> 3.0"},
      {:httpoison, "~> 0.10.0"},
      {:secure_random, "~> 0.5"},
+     {:stash, "~> 1.0.0"},
+     {:distillery, "~> 1.0"},
      {:excoveralls, "~> 0.6", only: :test},
-     {:mock, "~> 0.2.0", only: :test},
-     {:stash, "~> 1.0.0", only: :test}]
+     {:mock, "~> 0.2.0", only: :test}]
   end
 end
