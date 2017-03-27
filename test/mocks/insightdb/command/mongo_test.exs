@@ -18,12 +18,12 @@ defmodule Insightdb.Command.MongoMocksTest do
       MongoMocks.get_db(@server, mock_db_key)
     assert {:ok, %{inserted_id: 1}} = MongoMocks.insert_doc(@server, mock_db_key, "cmd_schedule",
       %{"cmd_type" => :http_command, "status" => "scheduled", "cmd_config" => @cmd_config_1})
-    doc = MongoMocks.find_doc(@server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == 1 end)
+    assert [doc] = MongoMocks.find_doc(@server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == 1 end)
     assert %{"_id" => 1} = doc
     new_doc = Map.put(doc, "status", "finished")
     assert {:ok, %{matched_count: 1, modified_count: 1}} =
       MongoMocks.update_doc(@server, mock_db_key, "cmd_schedule", new_doc)
-    doc2 = MongoMocks.find_doc(@server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == 1 end)
+    assert [doc2] = MongoMocks.find_doc(@server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == 1 end)
     assert %{"status" => "finished"} = doc2
   end
 
