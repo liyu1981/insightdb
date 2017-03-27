@@ -20,6 +20,7 @@ defmodule Insightdb.CommandServer do
     with  conn_name <- format_conn_name(server),
           {:ok, %{inserted_id: cmd_id}} <- Mongo.insert_one(
            conn_name, Constant.coll_cmd_schedule, %{
+             Constant.field_ds => DateTime.to_unix(DateTime.utc_now()),
              Constant.field_cmd_type => cmd_type,
              Constant.field_status => Constant.status_scheduled,
              Constant.field_cmd_config => cmd_config

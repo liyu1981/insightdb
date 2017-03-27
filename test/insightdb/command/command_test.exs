@@ -34,8 +34,9 @@ defmodule Insightdb.CommandTest do
 
       %{Constant.field_status => "done"} = Command.find_cmd(@server, cmd_id)
       assert %{"cmd_schedule_error" => [], "cmd_schedule_result" => result} = MongoMocks.get_db(@server, mock_db_key)
-      assert [%{"cmd_id" => 123, "result" => %{"original_response" => "hello, world", "result" => [1, 2, 3]}}] =
-        result
+      assert [%{"cmd_id" => 123,
+                "result" => %{"original_response" => "hello, world", "result" => [1, 2, 3]},
+                "ds" => _ds}] = result
     end
   end
 

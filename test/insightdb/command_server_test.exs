@@ -11,11 +11,9 @@ defmodule Insightdb.CommandServerTest do
   @mserver :cmd_server_mongo_conn
 
   setup do
-    with_mocks([MongoMocks.gen_start_link()]) do
-      with {:ok, server} <- CommandServer.start_link([name: @cserver]),
-           {:ok, _pid} <- HttpCommandMocks.start_link,
-           do: {:ok, cmd_server: server}
-    end
+    with {:ok, server} <- CommandServer.start_link([name: @cserver]),
+         {:ok, _pid} <- HttpCommandMocks.start_link,
+         do: {:ok, cmd_server: server}
   end
 
   test "normal http_command flow", %{cmd_server: cmd_server} do
@@ -53,7 +51,7 @@ defmodule Insightdb.CommandServerTest do
       mock_db = MongoMocks.get_db(@mserver, mock_db_key)
       assert %{"cmd_schedule" => [_, %{"_id" => 2, "status" => "failed"}]} = mock_db
       assert %{"cmd_schedule_result" => []} = mock_db
-      assert %{"cmd_schedule_error" => [_, %{"cmd_id" => 2, "error" => error}]} = mock_db
+      assert %{"cmd_schedule_error" => [_, %{"cmd_id" => 2, "error" => error, "ds" => _ds}]} = mock_db
       assert error =~ "Do not know how to handle http verb: get1"
     end
   end
@@ -72,7 +70,7 @@ defmodule Insightdb.CommandServerTest do
       mock_db = MongoMocks.get_db(@mserver, mock_db_key)
       assert %{"cmd_schedule" => [%{"_id" => 1, "status" => "failed"}]} = mock_db
       assert %{"cmd_schedule_result" => []} = mock_db
-      assert %{"cmd_schedule_error" => [%{"cmd_id" => 1, "error" => error}]} = mock_db
+      assert %{"cmd_schedule_error" => [%{"cmd_id" => 1, "error" => error, "ds" => _ds}]} = mock_db
       assert error =~ "can not find cmd with id 1"
     end
   end

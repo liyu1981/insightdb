@@ -18,7 +18,8 @@ defmodule Insightdb.Command do
   def update_cmd_status(conn_name, cmd_id, Constant.status_failed, [error: error, stacktrace: stacktrace]) do
     Mongo.insert_one!(
       conn_name, Constant.coll_cmd_schedule_error,
-      %{Constant.field_cmd_id => cmd_id,
+      %{Constant.field_ds => DateTime.to_unix(DateTime.utc_now()),
+        Constant.field_cmd_id => cmd_id,
         Constant.field_error => "#{inspect error}",
         Constant.field_stacktrace => "#{inspect stacktrace}"}
     )
@@ -44,7 +45,8 @@ defmodule Insightdb.Command do
   def save_cmd_result(conn_name, cmd_id, result) do
     Mongo.insert_one!(
       conn_name, Constant.coll_cmd_schedule_result,
-      %{Constant.field_cmd_id => cmd_id,
+      %{Constant.field_ds => DateTime.to_unix(DateTime.utc_now()),
+        Constant.field_cmd_id => cmd_id,
         Constant.field_result => result}
     )
   end

@@ -13,6 +13,7 @@ defmodule Insightdb.Command.Constant do
   constant field_error, "error"
   constant field_stacktrace, "stacktrace"
   constant field_result, "result"
+  constant field_ds, "ds"
 
   constant status_scheduled, "scheduled"
   constant status_running, "running"
