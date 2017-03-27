@@ -48,18 +48,27 @@ defmodule Insightdb.Command.MongoMocks do
   @spec gen(server, String.t) :: {module, list, list}
   def gen(server, mock_db_key) do
     {Mongo, [], [
-      find_one: fn(_, _, %{"_id" => cmd_id}) ->
-        find_doc(server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == cmd_id end)
+      find: fn(_, "cmd_schedule", %{"cmd_type" => :http_command, "status" => status},
+              [sort: _sort, batch_size: _batch_size, limit: _limit]) ->
+        find_doc(server, mock_db_key, "cmd_schedule",
+          fn(x) -> x["cmd_type"] == :http_command and x["status"] == status end)
       end,
-      find_one_and_update: fn(_, _, %{"_id" => cmd_id}, %{"set" => %{"status" => status}}) ->
-        doc = find_doc(server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == cmd_id end)
+
+      find_one: fn(_, _, %{"_id" => cmd_id}) ->
+        find_doc(server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == cmd_id end) |> hd
+      end,
+
+      find_one_and_update: fn(_, "cmd_schedule", %{"_id" => cmd_id}, %{"set" => %{"status" => status}}) ->
+        doc = find_doc(server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == cmd_id end) |> hd
         new_doc = Map.put(doc, "status", status)
         with {:ok, _} <- update_doc(server, mock_db_key, "cmd_schedule", new_doc),
              do: {:ok, new_doc}
       end,
+
       insert_one: fn(_, coll, doc) ->
         insert_doc(server, mock_db_key, coll, doc)
       end,
+
       insert_one!: fn(_, coll, doc) ->
         insert_doc(server, mock_db_key, coll, doc)
       end,
@@ -102,8 +111,8 @@ defmodule Insightdb.Command.MongoMocks do
 
   def handle_call({:find_doc, mock_db_key, coll, findfn}, _from, state) do
     mock_db = Stash.get(@stash_domain, mock_db_key)
-    doc = Enum.find(Map.get(mock_db, coll), fn(x) -> findfn.(x) end)
-    {:reply, doc, state}
+    docs = Enum.filter(Map.get(mock_db, coll), fn(x) -> findfn.(x) end)
+    {:reply, docs, state}
   end
 
   def handle_call({:insert_doc, mock_db_key, coll, doc}, _from, state) do

@@ -9,32 +9,13 @@ defmodule Insightdb.CommandRunner do
   """
 
   use GenServer
-  require Logger
   require Insightdb.Command.Constant
+  import Insightdb.Command.Utils
+
   alias Insightdb.Command.Constant, as: Constant
   alias Insightdb.Command, as: Command
 
   # API
-
-  def reg(server, cmd_type, cmd_config) do
-    with  conn_name <- format_conn_name(server),
-          {:ok, %{inserted_id: cmd_id}} <- Mongo.insert_one(
-           conn_name, Constant.coll_cmd_schedule, %{
-             Constant.field_ds => DateTime.to_unix(DateTime.utc_now()),
-             Constant.field_cmd_type => cmd_type,
-             Constant.field_status => Constant.status_scheduled,
-             Constant.field_cmd_config => cmd_config
-           }),
-         do: {:ok, cmd_id}
-  end
-
-  def cmd_status(server, cmd_id) do
-    with conn_name <- format_conn_name(server),
-         doc <- Command.find_cmd(conn_name, cmd_id),
-         false <- is_nil(doc),
-         true <- Map.has_key?(doc, Constant.field_status),
-         do: {:ok, doc[Constant.field_status]}
-  end
 
   def run(server, cmd_id) do
     GenServer.cast(server, {:run, cmd_id})
@@ -51,15 +32,13 @@ defmodule Insightdb.CommandRunner do
   def init(state) do
     require Insightdb.Mongo
     mongo_start_link = Insightdb.Mongo.gen_start_link
-    with server_name = Map.get(state, :name),
-         conn_name = format_conn_name(server_name),
+    with conn_name <- gen_mongo_conn_name(state),
          {:ok, _mongo_pid} <- mongo_start_link.([name: conn_name, database: "insightdb"]),
-         new_state <- Map.put(state, :conn_name, conn_name),
-         do: {:ok, new_state}
+         do: {:ok, state}
   end
 
   def handle_cast({:run, cmd_id}, state) do
-    conn_name = Map.get(state, :conn_name)
+    conn_name = gen_mongo_conn_name(state)
     try do
       %{Constant.field_cmd_type => cmd_type,
         Constant.field_status => Constant.status_scheduled,
@@ -77,12 +56,6 @@ defmodule Insightdb.CommandRunner do
         Command.update_cmd_status_and_save_error(conn_name, cmd_id, Exception.format_exit(reason))
     end
     {:noreply, state}
-  end
-
-  # Private
-
-  defp format_conn_name(server_name) do
-    to_string(server_name) <> "_mongo_conn" |> String.to_atom
   end
 
 end
