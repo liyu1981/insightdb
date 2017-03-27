@@ -7,7 +7,7 @@ defmodule Insightdb do
     import Supervisor.Spec, warn: false
     children = for _ <- 1..4 do
       {name, id} = gen_command_server_name()
-      worker(Insightdb.CommandServer, [[name: name]], [id: id])
+      worker(Insightdb.CommandRunner, [[name: name]], [id: id])
     end
     opts = [strategy: :one_for_one, name: Insightdb.Supervisor]
     Supervisor.start_link(children, opts)

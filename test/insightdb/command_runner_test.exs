@@ -1,8 +1,8 @@
-defmodule Insightdb.CommandServerTest do
+defmodule Insightdb.CommandRunnerTest do
   use ExUnit.Case
   import Mock
 
-  alias Insightdb.CommandServer, as: CommandServer
+  alias Insightdb.CommandRunner, as: CommandRunner
   alias Insightdb.Command.MongoMocks, as: MongoMocks
   alias Insightdb.Command.HttpCommandMocks, as: HttpCommandMocks
 
@@ -11,7 +11,7 @@ defmodule Insightdb.CommandServerTest do
   @mserver :cmd_server_mongo_conn
 
   setup do
-    with {:ok, server} <- CommandServer.start_link([name: @cserver]),
+    with {:ok, server} <- CommandRunner.start_link([name: @cserver]),
          {:ok, _pid} <- HttpCommandMocks.start_link,
          do: {:ok, cmd_server: server}
   end
@@ -21,14 +21,14 @@ defmodule Insightdb.CommandServerTest do
     mock_http_key = HttpCommandMocks.init_http_mock()
     HttpCommandMocks.set_lazy(mock_http_key, 1000)
     with_mocks([MongoMocks.gen(@mserver, mock_db_key), HttpCommandMocks.gen(mock_http_key)]) do
-      assert {:ok, cmd_id} = CommandServer.reg(@mserver, :http_command, @cmd_config_1)
-      assert {:ok, "scheduled"} = CommandServer.cmd_status(@mserver, cmd_id)
-      assert :ok = CommandServer.run(cmd_server, cmd_id)
+      assert {:ok, cmd_id} = CommandRunner.reg(@mserver, :http_command, @cmd_config_1)
+      assert {:ok, "scheduled"} = CommandRunner.cmd_status(@mserver, cmd_id)
+      assert :ok = CommandRunner.run(cmd_server, cmd_id)
       # right after run cmd, server and cmd status should be `running`
       Process.sleep(10)
-      assert {:ok, "running"} = CommandServer.cmd_status(@mserver, cmd_id)
+      assert {:ok, "running"} = CommandRunner.cmd_status(@mserver, cmd_id)
       Process.sleep(1000)
-      assert {:ok, "done"} = CommandServer.cmd_status(@mserver, cmd_id)
+      assert {:ok, "done"} = CommandRunner.cmd_status(@mserver, cmd_id)
     end
   end
 
@@ -36,8 +36,8 @@ defmodule Insightdb.CommandServerTest do
   test "http_command exception", %{cmd_server: cmd_server} do
     mock_db_key = MongoMocks.init_mock_db(@mserver)
     with_mocks([MongoMocks.gen(@mserver, mock_db_key)]) do
-      assert {:ok, 1} = CommandServer.reg(@mserver, :http_command1, @cmd_config_1)
-      assert :ok = CommandServer.run(cmd_server, 1)
+      assert {:ok, 1} = CommandRunner.reg(@mserver, :http_command1, @cmd_config_1)
+      assert :ok = CommandRunner.run(cmd_server, 1)
       Process.sleep(10)
       mock_db = MongoMocks.get_db(@mserver, mock_db_key)
       assert %{"cmd_schedule" => [%{"status" => "failed"}]} = mock_db
@@ -45,8 +45,8 @@ defmodule Insightdb.CommandServerTest do
       assert %{"cmd_schedule_error" => [%{"cmd_id" => 1, "error" => error}]} = mock_db
       assert error =~ "no function clause matching in"
 
-      assert {:ok, 2} = CommandServer.reg(@mserver, :http_command, Keyword.put(@cmd_config_1, :verb, :get1))
-      assert :ok = CommandServer.run(cmd_server, 2)
+      assert {:ok, 2} = CommandRunner.reg(@mserver, :http_command, Keyword.put(@cmd_config_1, :verb, :get1))
+      assert :ok = CommandRunner.run(cmd_server, 2)
       Process.sleep(10)
       mock_db = MongoMocks.get_db(@mserver, mock_db_key)
       assert %{"cmd_schedule" => [_, %{"_id" => 2, "status" => "failed"}]} = mock_db
@@ -64,8 +64,8 @@ defmodule Insightdb.CommandServerTest do
     end
     mock_db_key = MongoMocks.init_mock_db(@mserver)
     with_mocks([gen_mongo_mocks_and_replace.(@mserver, mock_db_key), HttpCommandMocks.gen()]) do
-      assert {:ok, 1} = CommandServer.reg(@mserver, :http_command, @cmd_config_1)
-      assert :ok = CommandServer.run(cmd_server, 1)
+      assert {:ok, 1} = CommandRunner.reg(@mserver, :http_command, @cmd_config_1)
+      assert :ok = CommandRunner.run(cmd_server, 1)
       Process.sleep(10)
       mock_db = MongoMocks.get_db(@mserver, mock_db_key)
       assert %{"cmd_schedule" => [%{"_id" => 1, "status" => "failed"}]} = mock_db

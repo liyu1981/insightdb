@@ -1,4 +1,4 @@
-defmodule Insightdb.CommandServer do
+defmodule Insightdb.CommandRunner do
   @moduledoc """
   Command's life cycle:
     1. update command's data to Mongo doc with cmd_id (status: scheduled)
