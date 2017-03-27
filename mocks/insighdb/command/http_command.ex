@@ -6,14 +6,17 @@ defmodule Insightdb.Command.HttpCommandMocks do
 
   @sample_result %{"result" => [1,2,3], "original_response" => "hello, world"}
 
+  @spec init_http_mock():: term
   def init_http_mock do
     GenServer.call(@server_name, {:init})
   end
 
+  @spec set_lazy(String.t, integer):: term
   def set_lazy(mock_key, lazyness) when is_integer(lazyness) do
     GenServer.call(@server_name, {:set_lazy, mock_key, lazyness})
   end
 
+  @spec gen(String.t):: {module, list, list}
   def gen(mock_key \\ "0") do
     {Insightdb.Command.HttpCommand, [], [
       run: fn(_, _, _, _, _) ->

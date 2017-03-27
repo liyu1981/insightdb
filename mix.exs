@@ -43,7 +43,8 @@ defmodule Insightdb.Mixfile do
      {:distillery, "~> 1.0"},
      {:stash, "~> 1.0.0", only: :test},
      {:excoveralls, "~> 0.6", only: :test},
-     {:mock, "~> 0.2.0", only: :test}]
+     {:mock, "~> 0.2.0", only: :test},
+     {:dialyxir, "~> 0.4", only: :dev}]
   end
 
   defp elixirc_paths do

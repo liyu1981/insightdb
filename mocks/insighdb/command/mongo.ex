@@ -5,16 +5,24 @@ defmodule Insightdb.Command.MongoMocks do
   @stash_mock_db_key "mockdb"
   @stash_domain :mongo_mock_server
 
+  @typedoc "The GenServer name"
+  @type name :: atom | {:global, term} | {:via, module, term}
+
+  @typedoc "The server reference"
+  @type server :: pid | name | {atom, node}
+
   @init_mock_db %{
     "cmd_schedule" => [],
     "cmd_schedule_error" => [],
     "cmd_schedule_result" => [],
   }
 
+  @spec init_mock_db(server) :: term
   def init_mock_db(server) do
     GenServer.call(server, {:init_mock_db})
   end
 
+  @spec setup_mock_db(server, integer, term, map) :: term
   def setup_mock_db(server, cmd_id, cmd_type, cmd_config) do
     mock_db_key = init_mock_db(server)
     GenServer.call(server, {:insert_doc, mock_db_key, "cmd_schedule",
@@ -22,18 +30,22 @@ defmodule Insightdb.Command.MongoMocks do
     mock_db_key
   end
 
+  @spec find_doc(server, String.t, String.t, fun) :: term
   def find_doc(server, mock_db_key, coll, findfn) do
     GenServer.call(server, {:find_doc, mock_db_key, coll, findfn})
   end
 
+  @spec update_doc(server, String.t, String.t, map) :: term
   def update_doc(server, mock_db_key, coll, doc) do
     GenServer.call(server, {:update_doc, mock_db_key, coll, doc})
   end
 
+  @spec insert_doc(server, String.t, String.t, map) :: term
   def insert_doc(server, mock_db_key, coll, doc) do
     GenServer.call(server, {:insert_doc, mock_db_key, coll, doc})
   end
 
+  @spec gen(server, String.t) :: {module, list, list}
   def gen(server, mock_db_key) do
     {Mongo, [], [
       find_one: fn(_, _, %{"_id" => cmd_id}) ->
@@ -54,10 +66,12 @@ defmodule Insightdb.Command.MongoMocks do
     ]}
   end
 
+  @spec get_db(server, String.t) :: term
   def get_db(server, mock_db_key) do
     GenServer.call(server, {:get_db, mock_db_key})
   end
 
+  @spec gen_start_link() :: {module, list, list}
   def gen_start_link() do
     {Mongo, [], [
       start_link: fn(params) -> start_link(params) end,

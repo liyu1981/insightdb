@@ -8,9 +8,9 @@ defmodule Insightdb.CommandServer do
        command's data in Mongo with status: done
   """
 
+  use GenServer
   require Logger
   require Insightdb.Command.Constant
-  use GenServer
   alias Insightdb.Command.Constant, as: Constant
   alias Insightdb.Command, as: Command
 
@@ -48,9 +48,11 @@ defmodule Insightdb.CommandServer do
   end
 
   def init(state) do
+    require Insightdb.Mongo
+    mongo_start_link = Insightdb.Mongo.gen_start_link
     with server_name = Map.get(state, :name),
          conn_name = format_conn_name(server_name),
-         {:ok, _mongo_pid} <- Mongo.start_link([name: conn_name, database: "insightdb"]),
+         {:ok, _mongo_pid} <- mongo_start_link.([name: conn_name, database: "insightdb"]),
          new_state <- Map.put(state, :conn_name, conn_name),
          do: {:ok, new_state}
   end
