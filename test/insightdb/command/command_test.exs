@@ -3,10 +3,10 @@ defmodule Insightdb.CommandTest do
   import ExUnit.CaptureLog
   import Mock
 
-  require Insightdb.Command.Constant
+  require Insightdb.Constant
 
   alias Insightdb.Command, as: Command
-  alias Insightdb.Command.Constant, as: Constant
+  alias Insightdb.Constant, as: Constant
   alias Insightdb.Command.MongoMocks, as: MongoMocks
   alias Insightdb.Command.HttpCommandMocks, as: HttpCommandMocks
 

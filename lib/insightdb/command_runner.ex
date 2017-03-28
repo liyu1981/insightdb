@@ -9,10 +9,10 @@ defmodule Insightdb.CommandRunner do
   """
 
   use GenServer
-  require Insightdb.Command.Constant
+  require Insightdb.Constant
   import Insightdb.Command.Utils
 
-  alias Insightdb.Command.Constant, as: Constant
+  alias Insightdb.Constant, as: Constant
   alias Insightdb.Command, as: Command
 
   # API

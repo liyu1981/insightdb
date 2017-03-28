@@ -20,6 +20,10 @@ defmodule Insightdb do
     Supervisor.start_link(children, opts)
   end
 
+  def list_worker(fun \\ fn(x) -> to_string(x) =~ "insightdb" end) do
+    Process.registered |> Enum.filter(fun)
+  end
+
   defp gen_command_runner_name() do
     id = SecureRandom.base64(8)
     name = String.to_atom("insightdb_command_runner_" <> id)

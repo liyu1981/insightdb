@@ -1,9 +1,9 @@
 defmodule Insightdb.Command do
   require Logger
-  require Insightdb.Command.Constant
+  require Insightdb.Constant
   use Insightdb.Command.HttpCommand
 
-  alias Insightdb.Command.Constant, as: Constant
+  alias Insightdb.Constant, as: Constant
   alias Insightdb.Command.HttpCommand, as: HttpCommand
 
   def find_cmd(conn_name, cmd_id) do

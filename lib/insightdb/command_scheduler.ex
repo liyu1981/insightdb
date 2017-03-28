@@ -1,10 +1,10 @@
 defmodule Insightdb.CommandScheduler do
   use GenServer
 
-  require Insightdb.Command.Constant
+  require Insightdb.Constant
   import Insightdb.Command.Utils
 
-  alias Insightdb.Command.Constant, as: Constant
+  alias Insightdb.Constant, as: Constant
   alias Insightdb.Command, as: Command
 
   # Api
@@ -17,16 +17,16 @@ defmodule Insightdb.CommandScheduler do
     GenServer.call(server, {:cmd_status, cmd_id})
   end
 
-  def find(server, cmd_type, cmd_status, limit \\ 1) do
+  def find(server, cmd_type, cmd_status, limit \\ 8) do
     GenServer.call(server, {:find_scheduled, cmd_type, cmd_status, limit})
-  end
-
-  def schedule_batch(server, cmd_id_list) do
-    GenServer.call(server, {:schedule, cmd_id_list})
   end
 
   def schedule_one(server, cmd_id) do
     GenServer.call(server, {:schedule, [cmd_id]})
+  end
+
+  def schedule_batch(server, cmd_id_list) do
+    GenServer.call(server, {:schedule, cmd_id_list})
   end
 
   # GenServer Callbacks
@@ -65,12 +65,12 @@ defmodule Insightdb.CommandScheduler do
   end
 
   def handle_call({:find_scheduled, cmd_type, cmd_status, limit}, _from, state) do
+    opts = [sort: %{Constant.field_ds => 1}, batch_size: limit, limit: limit]
     with conn_name <- gen_mongo_conn_name(state),
          cursor <- Mongo.find(conn_name, Constant.coll_cmd_schedule, %{
              Constant.field_status => cmd_status,
              Constant.field_cmd_type => cmd_type,
-           },
-           sort: Constant.field_ds, batch_size: limit, limit: limit),
+           }, opts),
          list <- Enum.to_list(cursor),
          do: {:reply, {:ok, list}, state}
   end

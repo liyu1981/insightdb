@@ -1,4 +1,4 @@
-defmodule Insightdb.Command.Constant do
+defmodule Insightdb.Constant do
   use Constants
 
   constant coll_cmd_schedule, "cmd_schedule"
