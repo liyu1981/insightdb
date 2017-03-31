@@ -1,9 +1,14 @@
 defmodule Insightdb.Constant do
   use Constants
 
+  constant db, "insightdb"
+
   constant coll_cmd_schedule, "cmd_schedule"
   constant coll_cmd_schedule_error, "cmd_schedule_error"
   constant coll_cmd_schedule_result, "cmd_schedule_result"
+  constant coll_request, "request"
+  constant coll_request_archive, "request_archive"
+  constant coll_request_error, "request_error"
 
   constant field__id, "_id"
   constant field_status, "status"
@@ -20,5 +25,12 @@ defmodule Insightdb.Constant do
   constant status_done, "done"
   constant status_finished, "finished"
   constant status_failed, "failed"
+
+  constant request_field_req_id, "req_id"
+  constant request_field_type, "type"
+  constant request_field_config, "config"
+
+  constant request_type_repeat, "repeat"
+  constant request_type_once, "once"
 
 end

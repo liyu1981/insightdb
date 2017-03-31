@@ -7,7 +7,7 @@ defmodule Insightdb.CommandTest do
 
   alias Insightdb.Command, as: Command
   alias Insightdb.Constant, as: Constant
-  alias Insightdb.Command.MongoMocks, as: MongoMocks
+  alias Insightdb.MongoMocks, as: MongoMocks
   alias Insightdb.Command.HttpCommandMocks, as: HttpCommandMocks
 
   @cmd_config_1 [verb: :get, url: "http://wwww.facebook.com", body: "", headers: [], options: []]

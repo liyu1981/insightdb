@@ -6,8 +6,7 @@ defmodule Insightdb.Command.Utils do
 
   def gen_mongo_conn_name(server_state) do
     with server_name <- Map.get(server_state, :name),
-         conn_name <- format_mongo_conn_name(server_name),
-         do: conn_name
+         do: format_mongo_conn_name(server_name)
   end
 
 end

@@ -35,8 +35,7 @@ defmodule Insightdb.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [{:mongodb, git: "git://github.com/ericmj/mongodb.git"},
-     #{:poolboy, "~>1.5.0"},
-     #{:db_connection, "~> 1.1"},
+     {:quantum, ">= 1.9.1"},
      {:poison, "~> 3.0"},
      {:httpoison, "~> 0.10.0"},
      {:secure_random, "~> 0.5"},

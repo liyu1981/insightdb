@@ -1,4 +1,4 @@
-defmodule Insightdb.Command.MongoMocks do
+defmodule Insightdb.MongoMocks do
   use GenServer
   require Stash
 

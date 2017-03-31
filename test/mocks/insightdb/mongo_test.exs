@@ -1,8 +1,8 @@
-defmodule Insightdb.Command.MongoMocksTest do
+defmodule Insightdb.MongoMocksTest do
   use ExUnit.Case
   import Mock
 
-  alias Insightdb.Command.MongoMocks, as: MongoMocks
+  alias Insightdb.MongoMocks, as: MongoMocks
 
   @cmd_config_1 [verb: :get, url: "http://wwww.facebook.com", body: "", headers: [], options: []]
   @server :test123
