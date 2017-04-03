@@ -1,5 +1,6 @@
 defmodule Insightdb.RequestManager do
   use GenServer
+  use Insightdb.GenServer
 
   require Insightdb.Constant
   import Insightdb.Command.Utils
@@ -34,38 +35,40 @@ defmodule Insightdb.RequestManager do
   end
 
   def handle_call({:new, request_config}, _from, state) do
-    with conn_name <- gen_mongo_conn_name(state),
-         {:ok, request_type, request_config2} <- Request.validate(request_config),
-         {:ok, id} <- Request.save(conn_name, request_type, request_config2),
-         do: {:reply, {:ok, id}, state}
+    reply state do
+      with conn_name <- gen_mongo_conn_name(state),
+           {:ok, formal_request_config} <- Request.validate(request_config),
+           {:ok, id} <- Request.save(conn_name, formal_request_config),
+           do: {:reply, {:ok, id}, state}
+    end
   end
 
   def handle_call({:reap}, _from, state) do
     opts = [projection: %{Constant.field__id => 1}]
-    with conn_name <- gen_mongo_conn_name(state),
-         request_list <- Enum.to_list(Mongo.find(conn_name, Constant.coll_request, %{}, opts)),
-         {:ok, reaped_ids, archived_ids, cron_job_list} <- reap_request_list(conn_name, request_list),
-         :ok <- install_new_crontab(cron_job_list),
-         do: {:reply, {:ok, %{reaped_ids: reaped_ids, archived_ids: archived_ids}}}
+    reply state do
+      with conn_name <- gen_mongo_conn_name(state),
+           request_list <- Enum.to_list(Mongo.find(conn_name, Constant.coll_request, %{}, opts)),
+           {:ok, reaped_ids, archived_ids, cronjob_cmd_ids} <- reap_request_list(conn_name, request_list),
+           :ok <- Insightdb.install_cronjob(cronjob_cmd_ids),
+           do: {:reply, {:ok, %{reaped_ids: reaped_ids, archived_ids: archived_ids}}, state}
+    end
   end
 
   # private
 
-  defp reap_request_list([request_id | tl], conn_name) do
-    # with {:ok, reaped_ids1, archived_ids1, cron_job_list1} <- Request.reap(request_id, conn_name),
-    #      {:ok, reaped_ids2, archived_ids2, cron_job_list2} <- reap_request_list(tl, conn_name),
-    #      do: {:ok,
-    #           request_id1 ++ reaped_ids2,
-    #           archived_ids1 ++ archived_ids2,
-    #           cron_job_list1 ++ cron_job_list2}
+  defp reap_request_list(conn_name, [request_id | tl]) do
+    with doc <- Request.find(conn_name, request_id),
+         {:ok, archived_list} <- Request.try_archive(doc),
+         {:ok, reaped_list, cronjob_cmd_id_list} <- Request.reap(doc),
+         {:ok, reaped_ids, archived_ids, cronjob_cmd_ids} <- reap_request_list(conn_name, tl),
+         do: {:ok,
+              reaped_list ++ reaped_ids,
+              archived_list ++ archived_ids,
+              cronjob_cmd_id_list ++ cronjob_cmd_ids}
   end
 
-  defp reap_request_list([], _conn_name) do
+  defp reap_request_list(_conn_name, []) do
     {:ok, [], [], []}
-  end
-
-  defp install_new_crontab(cron_job_list) do
-    :ok
   end
 
 end

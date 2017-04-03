@@ -17,12 +17,11 @@ defmodule Insightdb.CommandRunner do
   alias Insightdb.Constant, as: Constant
   alias Insightdb.Command, as: Command
   alias Insightdb.CommandRunnerState, as: CommandRunnerState
-  alias Insightdb.CommandScheduler, as: CommandScheduler
 
   # API
 
-  def reg(server, cmd_type, cmd_config) do
-    GenServer.call(server, {:reg, cmd_type, cmd_config})
+  def reg(server, cmd_type, cmd_config, request_id) do
+    GenServer.call(server, {:reg, cmd_type, cmd_config, request_id})
   end
 
   def run(server, cmd_id) do
@@ -46,7 +45,7 @@ defmodule Insightdb.CommandRunner do
          do: {:ok, state}
   end
 
-  def handle_call({:reg, cmd_type, cmd_config}, _from, state) do
+  def handle_call({:reg, cmd_type, cmd_config, ref_request_id}, _from, state) do
     reply state do
       with conn_name <- gen_mongo_conn_name(state),
            {:ok, response} <- Mongo.insert_one(
@@ -54,6 +53,7 @@ defmodule Insightdb.CommandRunner do
                Constant.field_ds => DateTime.to_unix(DateTime.utc_now()),
                Constant.field_cmd_type => cmd_type,
                Constant.field_status => Constant.status_scheduled,
+               Constant.field_ref_request_id => ref_request_id,
                Constant.field_cmd_config => cmd_config}),
            do: {:reply, {:ok, response}, state}
     end

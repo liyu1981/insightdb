@@ -5,6 +5,10 @@ defmodule Insightdb.CommandRunnerState do
     Agent.start(fn -> Map.new end, name: __MODULE__)
   end
 
+  def stop do
+    Agent.stop(__MODULE__)
+  end
+
   def add_new_runner(name) do
     Agent.update(__MODULE__, fn(map) -> Map.put(map, name, %{:status => :free}) end)
   end

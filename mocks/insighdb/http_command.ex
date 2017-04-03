@@ -1,29 +1,27 @@
-defmodule Insightdb.Command.HttpCommandMocks do
+defmodule Insightdb.HttpCommandMocks do
   use GenServer
   use Bangify
-
-  @server_name :http_command_mock_server
 
   @sample_result %{"result" => [1,2,3], "original_response" => "hello, world"}
 
   @spec init_http_mock():: term
   def init_http_mock do
-    GenServer.call(@server_name, {:init})
+    GenServer.call(__MODULE__, {:init})
   end
 
   @spec set_lazy(String.t, integer):: term
   def set_lazy(mock_key, lazyness) when is_integer(lazyness) do
-    GenServer.call(@server_name, {:set_lazy, mock_key, lazyness})
+    GenServer.call(__MODULE__, {:set_lazy, mock_key, lazyness})
   end
 
   @spec gen(String.t):: {module, list, list}
   def gen(mock_key \\ "0") do
     {Insightdb.Command.HttpCommand, [], [
       run: fn(_, _, _, _, _) ->
-        GenServer.call(@server_name, {:request, mock_key})
+        GenServer.call(__MODULE__, {:request, mock_key})
       end,
       run!: fn(_, _, _, _, _) ->
-        bangify(GenServer.call(@server_name, {:request, mock_key}))
+        bangify(GenServer.call(__MODULE__, {:request, mock_key}))
       end
     ]}
   end
@@ -32,7 +30,7 @@ defmodule Insightdb.Command.HttpCommandMocks do
 
   def start_link do
     with {:ok, pid} <- GenServer.start_link(__MODULE__, :ok, []),
-         true <- Process.register(pid, @server_name),
+         true <- Process.register(pid, __MODULE__),
          do: {:ok, pid}
   end
 

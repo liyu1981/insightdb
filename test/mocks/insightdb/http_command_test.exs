@@ -1,9 +1,9 @@
-defmodule Insightdb.Command.HttpCommandMocksTest do
+defmodule Insightdb.HttpCommandMocksTest do
   use ExUnit.Case
   import Mock
 
   alias Insightdb.Command.HttpCommand, as: HttpCommand
-  alias Insightdb.Command.HttpCommandMocks, as: HttpCommandMocks
+  alias Insightdb.HttpCommandMocks, as: HttpCommandMocks
 
   setup do
     with {:ok, _pid} <- HttpCommandMocks.start_link(),

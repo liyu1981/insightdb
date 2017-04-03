@@ -19,6 +19,7 @@ defmodule Insightdb.Constant do
   constant field_stacktrace, "stacktrace"
   constant field_result, "result"
   constant field_ds, "ds"
+  constant field_ref_request_id, "ref_request_id"
 
   constant status_scheduled, "scheduled"
   constant status_running, "running"
@@ -28,7 +29,7 @@ defmodule Insightdb.Constant do
 
   constant request_field_req_id, "req_id"
   constant request_field_type, "type"
-  constant request_field_config, "config"
+  constant request_field_payload, "payload"
 
   constant request_type_repeat, "repeat"
   constant request_type_once, "once"

@@ -54,8 +54,16 @@ defmodule Insightdb.MongoMocks do
           fn(x) -> x["cmd_type"] == :http_command and x["status"] == status end)
       end,
 
-      find_one: fn(_, _, %{"_id" => cmd_id}) ->
-        find_doc(server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == cmd_id end) |> hd
+      find: fn(_, coll, %{}, [projection: %{"_id" => 1}]) ->
+        find_doc(server, mock_db_key, coll, fn(x) -> true end) |> Enum.map(fn(item) -> Map.get(item, "_id") end)
+      end,
+
+      find_one: fn(_, coll, %{"_id" => id}) ->
+        find_doc(server, mock_db_key, coll, fn(x) -> x["_id"] == id end) |> hd
+      end,
+
+      find_one: fn(_, coll, %{"_id" => id}, _) ->
+        find_doc(server, mock_db_key, coll, fn(x) -> x["_id"] == id end) |> hd
       end,
 
       find_one_and_update: fn(_, "cmd_schedule", %{"_id" => cmd_id}, %{"set" => %{"status" => status}}) ->
@@ -63,6 +71,14 @@ defmodule Insightdb.MongoMocks do
         new_doc = Map.put(doc, "status", status)
         with {:ok, _} <- update_doc(server, mock_db_key, "cmd_schedule", new_doc),
              do: {:ok, new_doc}
+      end,
+
+      insert_one: fn(_, coll, doc, _) ->
+        insert_doc(server, mock_db_key, coll, doc)
+      end,
+
+      insert_one!: fn(_, coll, doc, _) ->
+        insert_doc(server, mock_db_key, coll, doc)
       end,
 
       insert_one: fn(_, coll, doc) ->
@@ -117,7 +133,7 @@ defmodule Insightdb.MongoMocks do
 
   def handle_call({:insert_doc, mock_db_key, coll, doc}, _from, state) do
     mock_db = Stash.get(@stash_domain, mock_db_key)
-    coll_list = Map.get(mock_db, coll)
+    coll_list = Map.get(mock_db, coll, [])
     size = Enum.count(coll_list) + 1
     Stash.set(@stash_domain, mock_db_key, Map.put(mock_db, coll, coll_list ++ [Map.put_new(doc, "_id", size)]))
     {:reply, {:ok, %{inserted_id: size}}, state}

@@ -8,31 +8,34 @@ defmodule Insightdb.CommandScheduler do
   alias Insightdb.Constant, as: Constant
   alias Insightdb.Command, as: Command
   alias Insightdb.CommandRunner, as: CommandRunner
-  alias Insightdb.CommandRunnerState, as: CommandRunnerState
 
   # Api
 
-  def reg(server, cmd_type, cmd_config) do
-    GenServer.call(server, {:reg, cmd_type, cmd_config})
+  def get() do
+    __MODULE__
   end
 
-  def run(server, cmd_id) do
-    GenServer.call(server, {:run, cmd_id})
+  def reg(cmd_type, cmd_config, ref_request_id \\ 0) do
+    GenServer.call(__MODULE__, {:reg, cmd_type, cmd_config, ref_request_id})
   end
 
-  def cmd_status(server, cmd_id) do
-    GenServer.call(server, {:cmd_status, cmd_id})
+  def run(cmd_id) do
+    GenServer.call(__MODULE__, {:run, cmd_id})
   end
 
-  def find(server, cmd_type, cmd_status, limit \\ 8) do
-    GenServer.call(server, {:find, cmd_type, cmd_status, limit})
+  def cmd_status(cmd_id) do
+    GenServer.call(__MODULE__, {:cmd_status, cmd_id})
+  end
+
+  def find(cmd_type, cmd_status, limit \\ 8) do
+    GenServer.call(__MODULE__, {:find, cmd_type, cmd_status, limit})
   end
 
   # GenServer Callbacks
 
-  def start_link([name: server_name]) do
-    with {:ok, pid} <- GenServer.start_link(__MODULE__, %{:name => server_name}, []),
-         true <- Process.register(pid, server_name),
+  def start_link do
+    with {:ok, pid} <- GenServer.start_link(__MODULE__, %{:name => __MODULE__}, []),
+         true <- Process.register(pid, __MODULE__),
          do: {:ok, pid}
   end
 
@@ -44,17 +47,17 @@ defmodule Insightdb.CommandScheduler do
          do: {:ok, state}
   end
 
-  def handle_call({:reg, cmd_type, cmd_config}, _from, state) do
+  def handle_call({:reg, cmd_type, cmd_config, ref_request_id}, _from, state) do
     reply state do
-      with {:ok, free_runner} <- CommandRunnerState.find_free_runner(),
-           {:ok, response} <- CommandRunner.reg(free_runner, cmd_type, cmd_config),
+      with {:ok, free_runner} <- Insightdb.find_free_command_runner(),
+           {:ok, response} <- CommandRunner.reg(free_runner, cmd_type, cmd_config, ref_request_id),
            do: {:reply, {:ok, response}, state}
     end
   end
 
   def handle_call({:run, cmd_id}, _from, state) do
     reply state do
-      with {:ok, free_runner} <- CommandRunnerState.find_free_runner(),
+      with {:ok, free_runner} <- Insightdb.find_free_command_runner(),
            :ok <- CommandRunner.run(free_runner, cmd_id),
            do: {:reply, :ok, state}
     end
