@@ -27,17 +27,12 @@ defmodule Insightdb.Request do
   end
 
   def reap(doc) do
-    scheduler = Insightdb.get_command_scheduler()
-    {rid, cmd_type, cmd_config} = gen_cronjob_cmd(doc)
+    {rid, datetime, cron_fun, cmd_type, cmd_config} = gen_cronjob_cmd(doc)
     with {:ok, %{inserted_id: cmd_id}} <- CommandScheduler.reg(cmd_type, cmd_config, rid),
-      do: {:ok, [rid], [cmd_id]}
+      do: {:ok, [rid], [{datetime, cron_fun, cmd_id}]}
   end
 
   # private
-
-  defp normalize_request_config(request_config) do
-    request_config
-  end
 
   defp gen_cronjob_cmd(doc) do
     case Map.get(doc, Constant.request_field_type) do
@@ -53,16 +48,17 @@ defmodule Insightdb.Request do
          rid <- Map.get(doc, Constant.field__id),
          cmd_type <- Map.get(payload, Constant.field_cmd_type),
          cmd_config <- Map.get(payload, Constant.field_cmd_config),
-         do: {rid, cmd_type, cmd_config}
+         do: {rid, :once, &CommandScheduler.run/1, cmd_type, cmd_config}
   end
 
   defp gen_cronjob_cmd_repeat(doc) do
     # TODO: repeat validation
     with payload <- Map.get(doc, Constant.request_field_payload),
+         datetime <- Map.get(doc, Constant.request_type_repeat),
          rid <- Map.get(doc, Constant.field__id),
          cmd_type <- Map.get(payload, Constant.field_cmd_type),
          cmd_config <- Map.get(payload, Constant.field_cmd_config),
-         do: {rid, cmd_type, cmd_config}
+         do: {rid, datetime, &CommandScheduler.run/1, cmd_type, cmd_config}
   end
 
   # defp gen_archieve_doc(doc) do

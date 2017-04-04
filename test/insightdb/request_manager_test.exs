@@ -2,6 +2,7 @@ defmodule Insightdb.RequestManagerTest do
   use ExUnit.Case
   import Mock
 
+  alias Insightdb.System, as: System
   alias Insightdb.CommandRunner, as: CommandRunner
   alias Insightdb.CommandRunnerState, as: CommandRunnerState
   alias Insightdb.CommandScheduler, as: CommandScheduler
@@ -36,17 +37,21 @@ defmodule Insightdb.RequestManagerTest do
   @s_mongo :request_manager_mongo_conn
 
   setup_all do
-    with {:ok, pid} <- CommandRunnerState.start_link,
-         _ <- on_exit(fn-> Process.exit(pid, :kill) end),
+    with {:ok, pid1} <- System.start_link,
+         {:ok, pid2} <- CommandRunnerState.start_link,
+         {:ok, pid3} <- CommandScheduler.start_link,
+         {:ok, pid4} <- HttpCommandMocks.start_link,
+         _ <- on_exit(fn->
+          [pid1, pid2, pid3, pid4] |>
+          Enum.each(fn(pid) -> Process.exit(pid, :kill) end)
+         end),
          do: :ok
   end
 
   setup do
     with {:ok, _pid} <- CommandRunner.start_link([name: @cr1]),
          {:ok, _pid} <- CommandRunner.start_link([name: @cr2]),
-         {:ok, _pid} <- CommandScheduler.start_link,
          {:ok, server} <- RequestManager.start_link([name: @s]),
-         {:ok, _pid} <- HttpCommandMocks.start_link,
          do: {:ok, reqmgr: server}
   end
 

@@ -48,8 +48,8 @@ defmodule Insightdb.RequestManager do
     reply state do
       with conn_name <- gen_mongo_conn_name(state),
            request_list <- Enum.to_list(Mongo.find(conn_name, Constant.coll_request, %{}, opts)),
-           {:ok, reaped_ids, archived_ids, cronjob_cmd_ids} <- reap_request_list(conn_name, request_list),
-           :ok <- Insightdb.install_cronjob(cronjob_cmd_ids),
+           {:ok, reaped_ids, archived_ids, cronjob_config_list} <- reap_request_list(conn_name, request_list),
+           :ok <- Insightdb.install_cronjob(cronjob_config_list),
            do: {:reply, {:ok, %{reaped_ids: reaped_ids, archived_ids: archived_ids}}, state}
     end
   end
@@ -59,12 +59,12 @@ defmodule Insightdb.RequestManager do
   defp reap_request_list(conn_name, [request_id | tl]) do
     with doc <- Request.find(conn_name, request_id),
          {:ok, archived_list} <- Request.try_archive(doc),
-         {:ok, reaped_list, cronjob_cmd_id_list} <- Request.reap(doc),
-         {:ok, reaped_ids, archived_ids, cronjob_cmd_ids} <- reap_request_list(conn_name, tl),
+         {:ok, reaped_list, cronjob_config_list} <- Request.reap(doc),
+         {:ok, reaped_ids, archived_ids, cronjob_configs} <- reap_request_list(conn_name, tl),
          do: {:ok,
               reaped_list ++ reaped_ids,
               archived_list ++ archived_ids,
-              cronjob_cmd_id_list ++ cronjob_cmd_ids}
+              cronjob_config_list ++ cronjob_configs}
   end
 
   defp reap_request_list(_conn_name, []) do

@@ -17,14 +17,17 @@ defmodule Insightdb do
     Insightdb.CommandScheduler.get
   end
 
-  def install_cronjob(_cronjob_cmd_ids) do
-    :ok
+  def install_cronjob(cronjob_config_list) do
+    with :ok <- Insightdb.System.save_cron(cronjob_config_list),
+         do: Insightdb.Quantum.install_cronjob(cronjob_config_list)
   end
 
   # Application callbacks
 
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
+
+    system = [worker(Insightdb.System, [])]
 
     cmd_runner_state = [worker(Insightdb.CommandRunnerState, [])]
 
@@ -33,9 +36,9 @@ defmodule Insightdb do
       worker(Insightdb.CommandRunner, [[name: name]], [id: id])
     end)
 
-    cmd_scheduler = [worker(Insightdb.CommandScheduler, [[name: gen_command_scheduler_name]])]
+    cmd_scheduler = [worker(Insightdb.CommandScheduler, [])]
 
-    children = cmd_runner_state ++ cmd_runners ++ cmd_scheduler
+    children = system ++ cmd_runner_state ++ cmd_runners ++ cmd_scheduler
 
     opts = [strategy: :one_for_one, name: Insightdb.Supervisor]
 
@@ -52,10 +55,6 @@ defmodule Insightdb do
     id = SecureRandom.base64(8)
     name = String.to_atom("insightdb_command_runner_" <> id)
     {name, id}
-  end
-
-  defp gen_command_scheduler_name() do
-    String.to_atom("insightdb_command_scheduler")
   end
 
 end

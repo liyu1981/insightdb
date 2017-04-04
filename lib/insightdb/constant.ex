@@ -3,6 +3,7 @@ defmodule Insightdb.Constant do
 
   constant db, "insightdb"
 
+  constant coll_system, "system"
   constant coll_cmd_schedule, "cmd_schedule"
   constant coll_cmd_schedule_error, "cmd_schedule_error"
   constant coll_cmd_schedule_result, "cmd_schedule_result"

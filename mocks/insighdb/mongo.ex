@@ -31,8 +31,8 @@ defmodule Insightdb.MongoMocks do
   end
 
   @spec find_doc(server, String.t, String.t, fun) :: term
-  def find_doc(server, mock_db_key, coll, findfn) do
-    GenServer.call(server, {:find_doc, mock_db_key, coll, findfn})
+  def find_doc(server, mock_db_key, coll, findfn, default \\ [%{}]) do
+    GenServer.call(server, {:find_doc, mock_db_key, coll, findfn, default})
   end
 
   @spec update_doc(server, String.t, String.t, map) :: term
@@ -53,38 +53,40 @@ defmodule Insightdb.MongoMocks do
         find_doc(server, mock_db_key, "cmd_schedule",
           fn(x) -> x["cmd_type"] == :http_command and x["status"] == status end)
       end,
-
       find: fn(_, coll, %{}, [projection: %{"_id" => 1}]) ->
-        find_doc(server, mock_db_key, coll, fn(x) -> true end) |> Enum.map(fn(item) -> Map.get(item, "_id") end)
+        find_doc(server, mock_db_key, coll, fn(_x) -> true end) |> Enum.map(fn(item) -> Map.get(item, "_id") end)
       end,
 
       find_one: fn(_, coll, %{"_id" => id}) ->
         find_doc(server, mock_db_key, coll, fn(x) -> x["_id"] == id end) |> hd
       end,
-
       find_one: fn(_, coll, %{"_id" => id}, _) ->
         find_doc(server, mock_db_key, coll, fn(x) -> x["_id"] == id end) |> hd
       end,
 
-      find_one_and_update: fn(_, "cmd_schedule", %{"_id" => cmd_id}, %{"set" => %{"status" => status}}) ->
-        doc = find_doc(server, mock_db_key, "cmd_schedule", fn(x) -> x["_id"] == cmd_id end) |> hd
-        new_doc = Map.put(doc, "status", status)
-        with {:ok, _} <- update_doc(server, mock_db_key, "cmd_schedule", new_doc),
+      find_one_and_update: fn(_, coll, %{"_id" => cmd_id}, %{"set" => set_config}) ->
+        doc = find_doc(server, mock_db_key, coll, fn(x) -> x["_id"] == cmd_id end) |> hd
+        new_doc = Enum.reduce(set_config, doc, fn({key, value}, acc) -> Map.put(acc, key, value) end)
+        with {:ok, _} <- update_doc(server, mock_db_key, coll, new_doc),
+             do: {:ok, new_doc}
+      end,
+      find_one_and_update: fn(_, coll, %{}, %{"set" => set_config}) ->
+        doc = find_doc(server, mock_db_key, coll, fn(_x) -> true end) |> hd
+        new_doc = Enum.reduce(set_config, doc, fn({key, value}, acc) -> Map.put(acc, key, value) end)
+        with {:ok, _} <- update_doc(server, mock_db_key, coll, new_doc),
              do: {:ok, new_doc}
       end,
 
       insert_one: fn(_, coll, doc, _) ->
         insert_doc(server, mock_db_key, coll, doc)
       end,
-
-      insert_one!: fn(_, coll, doc, _) ->
-        insert_doc(server, mock_db_key, coll, doc)
-      end,
-
       insert_one: fn(_, coll, doc) ->
         insert_doc(server, mock_db_key, coll, doc)
       end,
 
+      insert_one!: fn(_, coll, doc, _) ->
+        insert_doc(server, mock_db_key, coll, doc)
+      end,
       insert_one!: fn(_, coll, doc) ->
         insert_doc(server, mock_db_key, coll, doc)
       end,
@@ -125,10 +127,12 @@ defmodule Insightdb.MongoMocks do
     {:reply, Stash.get(@stash_domain, mock_db_key), state}
   end
 
-  def handle_call({:find_doc, mock_db_key, coll, findfn}, _from, state) do
+  def handle_call({:find_doc, mock_db_key, coll, findfn, default}, _from, state) do
     mock_db = Stash.get(@stash_domain, mock_db_key)
-    docs = Enum.filter(Map.get(mock_db, coll), fn(x) -> findfn.(x) end)
-    {:reply, docs, state}
+    case Map.get(mock_db, coll) do
+      nil -> {:reply, default, state}
+      coll_list -> {:reply, Enum.filter(coll_list, fn(x) -> findfn.(x) end), state}
+    end
   end
 
   def handle_call({:insert_doc, mock_db_key, coll, doc}, _from, state) do
@@ -142,11 +146,16 @@ defmodule Insightdb.MongoMocks do
   def handle_call({:update_doc, mock_db_key, coll, doc}, _from, state) do
     mock_db = Stash.get(@stash_domain, mock_db_key)
     coll_list = Map.get(mock_db, coll)
-    with pos <- Enum.find_index(coll_list, fn(x) -> x["_id"] == doc["_id"] end),
-         new_coll_list <- (List.delete_at(coll_list, pos) ++ [doc]),
-         do:
-           Stash.set(@stash_domain, mock_db_key, Map.put(mock_db, coll, new_coll_list))
-           {:reply, {:ok, %{matched_count: 1, modified_count: 1}}, state}
+    if coll_list == nil do
+      Stash.set(@stash_domain, mock_db_key, Map.put(mock_db, coll, [doc]))
+      {:reply, {:ok, %{matched_count: 0, modified_count: 1}}, state}
+    else
+      with pos <- Enum.find_index(coll_list, fn(x) -> x["_id"] == doc["_id"] end),
+           new_coll_list <- (List.delete_at(coll_list, pos) ++ [doc]),
+           do:
+             Stash.set(@stash_domain, mock_db_key, Map.put(mock_db, coll, new_coll_list))
+             {:reply, {:ok, %{matched_count: 1, modified_count: 1}}, state}
+    end
   end
 
 end
