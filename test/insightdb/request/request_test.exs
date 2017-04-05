@@ -1,9 +1,10 @@
 defmodule Insightdb.RequestTest do
   use ExUnit.Case
+  use Insightdb.Test
   import Mock
-  import Insightdb.Constant
+  #import Insightdb.Constant
 
-  alias Insightdb.Constant, as: Constant
+  #alias Insightdb.Constant, as: Constant
   alias Insightdb.CommandRunnerState, as: CommandRunnerState
   alias Insightdb.CommandScheduler, as: CommandScheduler
   alias Insightdb.MongoMocks, as: MongoMocks
@@ -14,7 +15,7 @@ defmodule Insightdb.RequestTest do
 
   @correct_request_config %{
     "type" => "repeat",
-    "repeat" => "",
+    "repeat" => "* * * * *",
     "payload" => %{
       "cmd_type" => :http_command,
       "cmd_config" => %{
@@ -23,17 +24,17 @@ defmodule Insightdb.RequestTest do
       }
     },
   }
-  @wrong_request_config ""
+  #@wrong_request_config ""
 
   setup_all do
-    with {:ok, pid} <- CommandRunnerState.start_link,
-         _ <- on_exit(fn-> Process.exit(pid, :kill) end),
+    with {:ok, pid1} <- CommandRunnerState.start_link,
+         {:ok, pid2} <- CommandScheduler.start_link,
+         _ <- kill_all_on_exit([pid1, pid2]),
          do: :ok
   end
 
   setup do
     with {:ok, _pid} <- Insightdb.CommandRunner.start_link([name: @rserver]),
-         {:ok, _pid} <- CommandScheduler.start_link,
          {:ok, _pid} <- MongoMocks.start_link([name: @mongo_server, database: "dummy"]),
          do: :ok
   end
@@ -43,8 +44,10 @@ defmodule Insightdb.RequestTest do
     with_mocks([MongoMocks.gen(@mongo_server, mock_db_key)]) do
       assert {:ok, config} = Request.validate(@correct_request_config)
       assert {:ok, %{:inserted_id => 1}} = Request.save(@mongo_server, config)
-      assert doc = Request.find(@mongo_server, 1)
-      assert {:ok, [1], [1]} = Request.reap(doc)
+      doc = Request.find(@mongo_server, 1)
+      assert doc != nil 
+      assert {:ok, [1], [{"* * * * *", fun, 1}]} = Request.reap(doc)
+      assert fun == &Insightdb.CommandScheduler.run/1
       assert {:ok, "scheduled"} = CommandScheduler.cmd_status(1)
     end
   end

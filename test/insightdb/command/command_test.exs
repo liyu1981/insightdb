@@ -1,5 +1,7 @@
 defmodule Insightdb.CommandTest do
   use ExUnit.Case
+  use Insightdb.Test
+
   import ExUnit.CaptureLog
   import Mock
 
@@ -13,9 +15,14 @@ defmodule Insightdb.CommandTest do
   @cmd_config_1 [verb: :get, url: "http://wwww.facebook.com", body: "", headers: [], options: []]
   @server :mongo_mock
 
+  setup_all do
+    with {:ok, pid1} <- HttpCommandMocks.start_link,
+         _ <- kill_all_on_exit([pid1]),
+         do: :ok
+  end
+
   setup do
     with {:ok, _pid} <- MongoMocks.start_link([name: @server, database: "dummy"]),
-         {:ok, _pid} <- HttpCommandMocks.start_link(),
          do: :ok
   end
 

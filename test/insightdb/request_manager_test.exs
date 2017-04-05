@@ -1,5 +1,6 @@
 defmodule Insightdb.RequestManagerTest do
   use ExUnit.Case
+  use Insightdb.Test
   import Mock
 
   alias Insightdb.System, as: System
@@ -41,10 +42,7 @@ defmodule Insightdb.RequestManagerTest do
          {:ok, pid2} <- CommandRunnerState.start_link,
          {:ok, pid3} <- CommandScheduler.start_link,
          {:ok, pid4} <- HttpCommandMocks.start_link,
-         _ <- on_exit(fn->
-          [pid1, pid2, pid3, pid4] |>
-          Enum.each(fn(pid) -> Process.exit(pid, :kill) end)
-         end),
+         _ <- kill_all_on_exit([pid1, pid2, pid3, pid4]),
          do: :ok
   end
 

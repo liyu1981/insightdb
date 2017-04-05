@@ -1,5 +1,6 @@
 defmodule Insightdb.CommandRunnerTest do
   use ExUnit.Case
+  use Insightdb.Test
   import Mock
 
   alias Insightdb.CommandRunner, as: CommandRunner
@@ -13,15 +14,15 @@ defmodule Insightdb.CommandRunnerTest do
   @rserver_mongo_conn :cmd_runner_mongo_conn
 
   setup_all do
-    with {:ok, pid} <- CommandRunnerState.start_link(),
-         _ <- on_exit(fn-> Process.exit(pid, :kill) end),
+    with {:ok, pid1} <- CommandRunnerState.start_link,
+         {:ok, pid2} <- CommandScheduler.start_link,
+         {:ok, pid3} <- HttpCommandMocks.start_link,
+         _ <- kill_all_on_exit([pid1, pid2, pid3]),
          do: :ok
   end
 
   setup do
-    with {:ok, _server1} <- CommandScheduler.start_link,
-         {:ok, _server2} <- CommandRunner.start_link([name: @rserver]),
-         {:ok, _pid} <- HttpCommandMocks.start_link,
+    with {:ok, _server2} <- CommandRunner.start_link([name: @rserver]),
          do: :ok
   end
 
